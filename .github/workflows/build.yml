@@ -1,0 +1,78 @@
+name: build
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * *'  # ежедневная проверка новой версии Instagram
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "build-tools;36.1.0" "platforms;android-36.1"
+
+      - name: apktool
+        run: |
+          curl -sL https://github.com/iBotPeaches/Apktool/releases/download/v3.0.3/apktool_3.0.3.jar -o apktool.jar
+          echo "APKTOOL=java -jar $PWD/apktool.jar" >> "$GITHUB_ENV"
+
+      - name: Проверка новой версии Instagram (только по расписанию)
+        if: github.event_name == 'schedule'
+        run: |
+          LATEST=$(curl -s "https://ws75.aptoide.com/api/7/app/get?package_name=com.instagram.android" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['nodes']['meta']['data']['vername'])")
+          CURRENT=$(cat version.txt)
+          echo "latest=$LATEST current=$CURRENT"
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "skip=1" >> "$GITHUB_ENV"
+          else
+            echo "$LATEST" > version.txt
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add version.txt
+            git commit -m "base: bump Instagram to $LATEST"
+            git push
+          fi
+
+      - name: Сборка
+        if: env.skip != '1'
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          if [ -n "${{ secrets.MOD_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.MOD_KEYSTORE_BASE64 }}" | base64 -d > mod.keystore
+          fi
+          scripts/build.sh
+
+      - name: Релиз с APK (vars.PUBLISH_APK = true)
+        if: env.skip != '1' && vars.PUBLISH_APK == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="$(cat version.txt)-mod.$(cat modrev.txt)"
+          APK=$(ls dist/*.apk)
+          gh release create "$TAG" "$APK" \
+            --title "Insta Mod $TAG" \
+            --notes "База: Instagram $(cat version.txt). Патчи: $(ls patches | tr '\n' ' ')" \
+            --latest || gh release upload "$TAG" "$APK" --clobber
+
+      - name: Только артефакт (PUBLISH_APK выключен)
+        if: env.skip != '1' && vars.PUBLISH_APK != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: insta-mod-apk
+          path: dist/*.apk
+          retention-days: 14

@@ -1,0 +1,741 @@
+diff --git a/README.md b/README.md
+index f93b15a80c..cd282f7a60 100644
+--- a/README.md
++++ b/README.md
+@@ -4,24 +4,46 @@
+ Каждый патч — отдельный коммит поверх базовой декомпиляции:
+ 
+ ```
+-patch(rename):  app label and feed wordmark 'Instagram' -> 'Insta'   (@)
+-patch(quality): disable photo/video upload compression
+-patch(ads):     block sponsored content insertion + ad network endpoints
+-base:           Instagram 435.0.0.37.76 pristine apktool decompile
++patch(modsettings): in-app mod menu (story-seen, screenshot, ads, analytics toggles)  (@)
++patch(pkg):         rename package com.instagram.android -> com.insta.mod
++patch(rename):      app label and feed wordmark 'Instagram' -> 'Insta'
++patch(quality):     disable photo/video upload compression
++patch(ads):         block sponsored content insertion + ad network endpoints
++base:               Instagram 435.0.0.37.76 pristine apktool decompile
+ ```
+ 
+ `src/` — результат `apktool d instagram_435.apk -o src` (полная декомпиляция, с ресурсами).
++`modsrc/ModSettingsActivity.java` — исходник меню настроек мода (компилируется отдельно, см. сборку).
++
++## Меню настроек мода
++
++Отдельная launcher-иконка «Insta Mod». Настройки хранятся в SharedPreferences `instamod`:
++
++| Ключ | Default | Хук |
++|---|---|---|
++| `no_story_seen` | false | три хука: `X/9Cp.A09` (накопление seen, classes6), `X/4gv.A0b` (локальная отметка рила, smali), `X/9Dn.A00` (флаш pending seen на сервер, classes6) — все ранний return |
++| `no_screenshot_detect` | false | `X/Qza.AN7` (classes11) и `X/3dU.AN7` (classes2) — ранний return в обеих реализациях детектора |
++| `no_ads` | true | `X/1vT.A02` (classes2) + `TigonServiceLayer.startRequest` (smali) |
++| `no_analytics` | false | `TigonServiceLayer.startRequest` — дроп `logging_client_events`, `/logger/` |
++
++Все хуки читают контекст через `sget-object v0, LX/2zD;->A00:Landroid/content/Context;`
++(поле сетится в `InstagramAppShell.attachBaseContext`); при null — поведение по умолчанию.
+ 
+ ## Сборка
+ 
+ ```bash
+ apktool b src -o insta_mod.apk
++# инжект dex с меню настроек (номер = max(classesN.dex)+1):
++javac --release 11 -cp $ANDROID_HOME/platforms/android-36.1/android.jar -d /tmp/modcls modsrc/ModSettingsActivity.java
++$ANDROID_HOME/build-tools/36.1.0/d8 --min-api 28 --lib $ANDROID_HOME/platforms/android-36.1/android.jar $(find /tmp/modcls -name '*.class') --output /tmp/moddex
++cp /tmp/moddex/classes.dex /tmp/classes21.dex
++zip -j insta_mod.apk /tmp/classes21.dex
+ zipalign -p -f 4 insta_mod.apk insta_mod_aligned.apk
+ apksigner sign --ks ../mod.keystore --ks-pass pass:androidmod --out insta_mod_signed.apk insta_mod_aligned.apk
+ adb install -r insta_mod_signed.apk
+ ```
+ 
+-(пути zipalign/apksigner: ~/Library/Android/sdk/build-tools/36.1.0/)
++(пути zipalign/apksigner/d8: ~/Library/Android/sdk/build-tools/36.1.0/)
+ 
+ ## Ребейз на новую версию Instagram
+ 
+@@ -41,15 +63,19 @@
+    ```bash
+    jj rebase -s wwrkwoqw -d @-   # стек patch(ads)+ дети -> на новый base
+    ```
+-   jj применит три трёхсторонних merge. Конфликты почти гарантированы в
++   jj применит трёхсторонние merge. Конфликты почти гарантированы в
+    обфусцированных именах классов (X/1vT в 435 может стать другим буквосочетанием):
+    ищи якоря по строковым маркерам, а не по именам файлов:
+    - ads: строка `"Is ad pod"` в boolean-методе; `TigonServiceLayer.startRequest`
+    - rename: `>Instagram<` в res/values/strings.xml + drawable `instagram_wordmark_ig_wordmark_*`
+    - quality: метод-рампа качества JPEG (константы `0x46`/`0x5f`), mobileconfig long `0x8208a900021394L` (max dimension), гейт high-quality видео (`0x895440` = 9 Mbps), даунскейл 720p (`0x8112a600006219L`)
++   - pkg: глобальная замена `com.instagram.android` в манифесте/smali + переименование authorities `com.instagram.*` (НЕ трогать `android:name` с реальными классами `com.instagram.*` — проверять существование класса)
++   - modsettings: mark-seen — метод `A09(ReelItem;Gsn)` у PendingReelSeenState (ищи `media/seen/?reel=`), метод `A0b(UserSession;J)V` у reel-модели (локальная отметка просмотра), флаш pending seen на сервер (`A00()V` рядом с 9Cp); детекторы скриншотов (интерфейс с `AN7(JLjava/lang/String;Ljava/util/List;)V`, строка `ScreenshotDetectorThread`)
++   - wordmark force: `ActionBarTitleViewSwitcher` (setImageResource после iput A05), mobileconfig-гейт в `X/2mV`, `MergedFeedsActionBar` (setWordmarkResource)
+ 4. Разреши конфликты (`jj status`, правь файлы, `jj squash` при необходимости), собери по инструкции выше.
+ 
+ ## Замечания
+ 
+ - `snapshot.max-new-file-size = 512MiB` выставлен в repo-конфиге — без этого jj отказывался трекать файлы >1MiB.
+ - Оригинальные тела пропатченных методов сохранены рядом как `adblock$disabled*` / `quality$orig*` — для дебага.
++- При правках smali помни: p0-параметры больших методов (>v15) нельзя напрямую в iget-object — используй `LX/2zD;->A00` или `move-object/from16`.
+diff --git a/modsrc/ModSettingsActivity.java b/modsrc/ModSettingsActivity.java
+new file mode 100644
+index 0000000000..649104754f
+--- /dev/null
++++ b/modsrc/ModSettingsActivity.java
+@@ -0,0 +1,142 @@
++package com.insta.mod;
++
++import android.app.Activity;
++import android.content.SharedPreferences;
++import android.graphics.Color;
++import android.graphics.Typeface;
++import android.os.Bundle;
++import android.view.View;
++import android.widget.Button;
++import android.widget.CompoundButton;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.Switch;
++import android.widget.TextView;
++import android.widget.Toast;
++
++public class ModSettingsActivity extends Activity {
++
++    private SharedPreferences prefs;
++
++    private int dp(int v) {
++        return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
++    }
++
++    @Override
++    public void onCreate(Bundle b) {
++        super.onCreate(b);
++        prefs = getSharedPreferences("instamod", MODE_PRIVATE);
++
++        ScrollView scroll = new ScrollView(this);
++        LinearLayout root = new LinearLayout(this);
++        root.setOrientation(LinearLayout.VERTICAL);
++        int pad = dp(20);
++        root.setPadding(pad, pad, pad, pad);
++        scroll.addView(root);
++
++        TextView title = new TextView(this);
++        title.setText("Insta Mod");
++        title.setTextSize(24);
++        title.setTypeface(Typeface.DEFAULT_BOLD);
++        title.setTextColor(Color.BLACK);
++        root.addView(title);
++
++        TextView sub = new TextView(this);
++        sub.setText("Версия мода: " + ModUpdater.getLocalVersion(this));
++        sub.setTextSize(13);
++        sub.setTextColor(Color.GRAY);
++        sub.setPadding(0, dp(4), 0, dp(16));
++        root.addView(sub);
++
++        addSwitch(root,
++                "Не отмечать сториз просмотренными",
++                "Автор сториз не узнает, что вы её смотрели",
++                "no_story_seen", false);
++        addSwitch(root,
++                "Отключить детект скриншотов",
++                "Не отправлять уведомления о скриншотах в Direct и сториз",
++                "no_screenshot_detect", false);
++        addSwitch(root,
++                "Блокировать рекламу",
++                "Убирает рекламу из ленты, сториз и reels",
++                "no_ads", true);
++        addSwitch(root,
++                "Блокировать аналитику",
++                "Не отправлять события сбора статистики (logging_client_events)",
++                "no_analytics", false);
++
++        TextView note = new TextView(this);
++        note.setText("Изменения применяются на лету. При проблемах — перезапустите Insta.");
++        note.setTextSize(12);
++        note.setTextColor(Color.GRAY);
++        note.setPadding(0, dp(24), 0, 0);
++        root.addView(note);
++
++        Button updateBtn = new Button(this);
++        updateBtn.setText("Проверить обновления");
++        updateBtn.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                checkUpdates(true);
++            }
++        });
++        root.addView(updateBtn);
++
++        setContentView(scroll);
++
++        checkUpdates(false);
++    }
++
++    private void checkUpdates(final boolean manual) {
++        ModUpdater.check(this, new ModUpdater.CheckCallback() {
++            @Override
++            public void onUpdate(ModUpdater.Release rel, String localVersion) {
++                ModUpdater.showUpdateDialog(ModSettingsActivity.this, rel);
++            }
++
++            @Override
++            public void onUpToDate(String localVersion) {
++                if (manual) {
++                    Toast.makeText(ModSettingsActivity.this,
++                            "У вас последняя версия (" + localVersion + ")", Toast.LENGTH_SHORT).show();
++                }
++            }
++
++            @Override
++            public void onError(String message) {
++                if (manual) {
++                    Toast.makeText(ModSettingsActivity.this,
++                            "Не удалось проверить: " + message, Toast.LENGTH_LONG).show();
++                }
++            }
++        });
++    }
++
++    private void addSwitch(LinearLayout root, String label, String hint, final String key, boolean def) {
++        LinearLayout row = new LinearLayout(this);
++        row.setOrientation(LinearLayout.VERTICAL);
++        row.setPadding(0, dp(10), 0, dp(10));
++
++        Switch sw = new Switch(this);
++        sw.setText(label);
++        sw.setTextSize(16);
++        sw.setTextColor(Color.BLACK);
++        sw.setChecked(prefs.getBoolean(key, def));
++        sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
++            @Override
++            public void onCheckedChanged(CompoundButton btn, boolean on) {
++                prefs.edit().putBoolean(key, on).apply();
++            }
++        });
++        row.addView(sw);
++
++        TextView h = new TextView(this);
++        h.setText(hint);
++        h.setTextSize(12);
++        h.setTextColor(Color.GRAY);
++        h.setPadding(0, dp(2), 0, 0);
++        row.addView(h);
++
++        root.addView(row);
++    }
++}
+diff --git a/modsrc/ModUpdater.java b/modsrc/ModUpdater.java
+new file mode 100644
+index 0000000000..9d46c92b2c
+--- /dev/null
++++ b/modsrc/ModUpdater.java
+@@ -0,0 +1,189 @@
++package com.insta.mod;
++
++import android.app.PendingIntent;
++import android.app.AlertDialog;
++import android.content.Context;
++import android.content.Intent;
++import android.content.IntentSender;
++import android.content.pm.PackageInstaller;
++import android.os.Handler;
++import android.os.Looper;
++import android.widget.Toast;
++
++import org.json.JSONArray;
++import org.json.JSONObject;
++
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.InputStream;
++import java.io.InputStreamReader;
++import java.io.OutputStream;
++import java.net.HttpURLConnection;
++import java.net.URL;
++
++public class ModUpdater {
++
++    public static final String REPO = "Shvandre/insta-mod";
++    private static final String API = "https://api.github.com/repos/" + REPO + "/releases/latest";
++
++    public static class Release {
++        public String tag;
++        public String apkUrl;
++        public String notes;
++    }
++
++    public interface CheckCallback {
++        void onUpdate(Release rel, String localVersion);
++        void onUpToDate(String localVersion);
++        void onError(String message);
++    }
++
++    public static String getLocalVersion(Context ctx) {
++        try {
++            InputStream in = ctx.getAssets().open("instamod/version");
++            BufferedReader r = new BufferedReader(new InputStreamReader(in));
++            String v = r.readLine();
++            r.close();
++            return v == null ? "unknown" : v.trim();
++        } catch (Exception e) {
++            return "unknown";
++        }
++    }
++
++    public static void check(final Context ctx, final CheckCallback cb) {
++        final Handler ui = new Handler(Looper.getMainLooper());
++        final Context app = ctx.getApplicationContext();
++        final String local = getLocalVersion(app);
++        new Thread(new Runnable() {
++            @Override
++            public void run() {
++                HttpURLConnection conn = null;
++                try {
++                    conn = (HttpURLConnection) new URL(API).openConnection();
++                    conn.setRequestProperty("User-Agent", "insta-mod-updater");
++                    conn.setRequestProperty("Accept", "application/vnd.github+json");
++                    conn.setConnectTimeout(10000);
++                    conn.setReadTimeout(10000);
++                    int code = conn.getResponseCode();
++                    if (code != 200) {
++                        throw new Exception("GitHub API: HTTP " + code);
++                    }
++                    BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
++                    StringBuilder sb = new StringBuilder();
++                    String line;
++                    while ((line = r.readLine()) != null) sb.append(line);
++                    r.close();
++
++                    JSONObject json = new JSONObject(sb.toString());
++                    final Release rel = new Release();
++                    rel.tag = json.getString("tag_name");
++                    rel.notes = json.optString("body", "");
++                    JSONArray assets = json.getJSONArray("assets");
++                    for (int i = 0; i < assets.length(); i++) {
++                        JSONObject a = assets.getJSONObject(i);
++                        if (a.getString("name").endsWith(".apk")) {
++                            rel.apkUrl = a.getString("browser_download_url");
++                            break;
++                        }
++                    }
++                    if (rel.apkUrl == null) {
++                        throw new Exception("В релизе " + rel.tag + " нет APK");
++                    }
++                    if (rel.tag.equals(local)) {
++                        ui.post(new Runnable() {
++                            @Override
++                            public void run() { cb.onUpToDate(local); }
++                        });
++                    } else {
++                        ui.post(new Runnable() {
++                            @Override
++                            public void run() { cb.onUpdate(rel, local); }
++                        });
++                    }
++                } catch (final Exception e) {
++                    ui.post(new Runnable() {
++                        @Override
++                        public void run() { cb.onError(e.getMessage()); }
++                    });
++                } finally {
++                    if (conn != null) conn.disconnect();
++                }
++            }
++        }).start();
++    }
++
++    public static void downloadAndInstall(final Context ctx, final Release rel) {
++        final Context app = ctx.getApplicationContext();
++        Toast.makeText(app, "Скачиваю " + rel.tag + "…", Toast.LENGTH_LONG).show();
++        new Thread(new Runnable() {
++            @Override
++            public void run() {
++                HttpURLConnection conn = null;
++                try {
++                    conn = (HttpURLConnection) new URL(rel.apkUrl).openConnection();
++                    conn.setRequestProperty("User-Agent", "insta-mod-updater");
++                    conn.setInstanceFollowRedirects(true);
++                    conn.connect();
++                    if (conn.getResponseCode() != 200) {
++                        throw new Exception("HTTP " + conn.getResponseCode());
++                    }
++                    File apk = new File(app.getCacheDir(), "update.apk");
++                    InputStream in = conn.getInputStream();
++                    FileOutputStream out = new FileOutputStream(apk);
++                    byte[] buf = new byte[65536];
++                    int n;
++                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
++                    out.close();
++                    in.close();
++                    install(app, apk);
++                } catch (final Exception e) {
++                    new Handler(Looper.getMainLooper()).post(new Runnable() {
++                        @Override
++                        public void run() {
++                            Toast.makeText(app, "Ошибка загрузки: " + e.getMessage(), Toast.LENGTH_LONG).show();
++                        }
++                    });
++                } finally {
++                    if (conn != null) conn.disconnect();
++                }
++            }
++        }).start();
++    }
++
++    private static void install(Context ctx, File apk) throws Exception {
++        PackageInstaller installer = ctx.getPackageManager().getPackageInstaller();
++        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
++                PackageInstaller.SessionParams.MODE_FULL_INSTALL);
++        int sessionId = installer.createSession(params);
++        PackageInstaller.Session session = installer.openSession(sessionId);
++        OutputStream out = session.openWrite("base.apk", 0, apk.length());
++        InputStream in = new java.io.FileInputStream(apk);
++        byte[] buf = new byte[65536];
++        int n;
++        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
++        session.fsync(out);
++        in.close();
++        out.close();
++
++        Intent intent = new Intent(ctx, ModSettingsActivity.class);
++        PendingIntent pi = PendingIntent.getActivity(ctx, sessionId, intent,
++                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
++        IntentSender sender = pi.getIntentSender();
++        session.commit(sender);
++        session.close();
++    }
++
++    public static void showUpdateDialog(final Context ctx, final Release rel) {
++        String msg = "Доступна версия " + rel.tag;
++        if (rel.notes != null && rel.notes.length() > 0 && rel.notes.length() < 500) {
++            msg += "\n\n" + rel.notes;
++        }
++        new AlertDialog.Builder(ctx)
++                .setTitle("Обновление Insta Mod")
++                .setMessage(msg)
++                .setPositiveButton("Скачать и установить", (d, w) -> downloadAndInstall(ctx, rel))
++                .setNegativeButton("Позже", null)
++                .show();
++    }
++}
+diff --git a/src/AndroidManifest.xml b/src/AndroidManifest.xml
+index 563af1a04d..f4e5e7614a 100644
+--- a/src/AndroidManifest.xml
++++ b/src/AndroidManifest.xml
+@@ -12,6 +12,7 @@
+         <screen android:screenDensity="xhdpi" android:screenSize="xlarge"/>
+     </compatible-screens>
+     <uses-permission android:name="android.permission.INTERNET"/>
++    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+     <uses-permission android:name="android.permission.WAKE_LOCK" violationExplanation="Need wake lock when user using SUP" violationType="MOS_BLOCKED_PERMISSION_WAKE_LOCK"/>
+     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS"/>
+@@ -2507,6 +2508,12 @@
+         </activity-alias>
+         <meta-data android:name="com.android.dynamic.apk.fused.modules" android:value="base"/>
+         <meta-data android:name="com.android.vending.splits" android:resource="@xml/splits0"/>
++        <activity android:exported="true" android:label="Insta Mod" android:name="com.insta.mod.ModSettingsActivity" android:theme="@android:style/Theme.Material.Light.NoActionBar">
++            <intent-filter>
++                <action android:name="android.intent.action.MAIN"/>
++                <category android:name="android.intent.category.LAUNCHER"/>
++            </intent-filter>
++        </activity>
+     </application>
+     <queries>
+         <intent>
+diff --git a/src/smali/X/4gv.smali b/src/smali/X/4gv.smali
+index b3c12a4154..0d62ffb1ed 100644
+--- a/src/smali/X/4gv.smali
++++ b/src/smali/X/4gv.smali
+@@ -11117,6 +11117,29 @@
+     .locals 7
+ 
+     .line 0
++    sget-object v0, LX/2zD;->A00:Landroid/content/Context;
++
++    if-nez v0, :instamod_seen_pref_off
++
++    const-string v1, "instamod"
++
++    const/4 v2, 0x0
++
++    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v0
++
++    const-string v1, "no_story_seen"
++
++    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v0
++
++    if-eqz v0, :instamod_seen_pref_off
++
++    return-void
++
++    :instamod_seen_pref_off
+     const/4 v1, 0x0
+ 
+     .line 1
+diff --git a/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali b/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
+index f9dee1e74d..394016cfbb 100644
+--- a/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
++++ b/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
+@@ -3333,6 +3333,29 @@
+ 
+     if-eqz v0, :cond_adblock_pass
+ 
++    sget-object v1, LX/2zD;->A00:Landroid/content/Context;
++
++    if-nez v1, :cond_instamod_ads_on
++
++    const-string v2, "instamod"
++
++    const/4 v3, 0x0
++
++    invoke-virtual {v1, v2, v3}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v2
++
++    const-string v1, "no_ads"
++
++    const/4 v3, 0x1
++
++    invoke-interface {v2, v1, v3}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v1
++
++    if-eqz v1, :cond_instamod_analytics
++
++    :cond_instamod_ads_on
+     const-string v1, "ads/graphql"
+ 
+     invoke-virtual {v0, v1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+@@ -3365,6 +3388,43 @@
+ 
+     if-nez v1, :cond_adblock_drop
+ 
++    :cond_instamod_analytics
++    sget-object v1, LX/2zD;->A00:Landroid/content/Context;
++
++    if-eqz v1, :cond_adblock_pass
++
++    const-string v2, "instamod"
++
++    const/4 v3, 0x0
++
++    invoke-virtual {v1, v2, v3}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v1
++
++    const-string v2, "no_analytics"
++
++    invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v1
++
++    if-eqz v1, :cond_adblock_pass
++
++    const-string v1, "logging_client_events"
++
++    invoke-virtual {v0, v1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
++
++    move-result v1
++
++    if-nez v1, :cond_adblock_drop
++
++    const-string v1, "/logger/"
++
++    invoke-virtual {v0, v1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
++
++    move-result v1
++
++    if-nez v1, :cond_adblock_drop
++
+     :cond_adblock_pass
+ 
+     .line 0
+diff --git a/src/smali_classes11/X/Qza.2.smali b/src/smali_classes11/X/Qza.2.smali
+index b426e1eff4..6e224e626c 100644
+--- a/src/smali_classes11/X/Qza.2.smali
++++ b/src/smali_classes11/X/Qza.2.smali
+@@ -87,6 +87,29 @@
+ .method public final AN7(JLjava/lang/String;Ljava/util/List;)V
+     .locals 7
+ 
++    sget-object v0, LX/2zD;->A00:Landroid/content/Context;
++
++    if-nez v0, :instamod_ss_pref_off
++
++    const-string v1, "instamod"
++
++    const/4 v2, 0x0
++
++    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v0
++
++    const-string v1, "no_screenshot_detect"
++
++    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v0
++
++    if-eqz v0, :instamod_ss_pref_off
++
++    return-void
++
++    :instamod_ss_pref_off
+     move-object v4, p4
+ 
+     invoke-static {p4}, LX/3l9;->A0R(Ljava/lang/Object;)V
+diff --git a/src/smali_classes2/X/1vT.smali b/src/smali_classes2/X/1vT.smali
+index 910422f116..318a3c8369 100644
+--- a/src/smali_classes2/X/1vT.smali
++++ b/src/smali_classes2/X/1vT.smali
+@@ -442,11 +442,41 @@
+ .end method
+ 
+ .method public static final A02(LX/1vT;LX/08X;LX/4od;)Z
+-    .locals 1
+-
++    .locals 3
++
++    sget-object v0, LX/2zD;->A00:Landroid/content/Context;
++
++    if-nez v0, :instamod_block_ads
++
++    const-string v1, "instamod"
++
++    const/4 v2, 0x0
++
++    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v0
++
++    const-string v1, "no_ads"
++
++    const/4 v2, 0x1
++
++    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v0
++
++    if-eqz v0, :instamod_ads_pref_off
++
++    :instamod_block_ads
+     const/4 v0, 0x0
+ 
+     return v0
++
++    :instamod_ads_pref_off
++    invoke-static {p0, p1, p2}, LX/1vT;->adblock$disabledA02(LX/1vT;LX/08X;LX/4od;)Z
++
++    move-result v0
++
++    return v0
+ .end method
+ 
+ .method private static synthetic adblock$disabledA02(LX/1vT;LX/08X;LX/4od;)Z
+diff --git a/src/smali_classes2/X/3dU.smali b/src/smali_classes2/X/3dU.smali
+index 1df8ce2b77..b48fa97323 100644
+--- a/src/smali_classes2/X/3dU.smali
++++ b/src/smali_classes2/X/3dU.smali
+@@ -658,6 +658,29 @@
+ .method public final AN7(JLjava/lang/String;Ljava/util/List;)V
+     .locals 3
+ 
++    sget-object v0, LX/2zD;->A00:Landroid/content/Context;
++
++    if-nez v0, :instamod_ss_pref_off
++
++    const-string v1, "instamod"
++
++    const/4 v2, 0x0
++
++    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v0
++
++    const-string v1, "no_screenshot_detect"
++
++    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v0
++
++    if-eqz v0, :instamod_ss_pref_off
++
++    return-void
++
++    :instamod_ss_pref_off
+     move-object v2, p3
+ 
+     const/16 v1, 0x2f
+diff --git a/src/smali_classes6/X/9Cp.smali b/src/smali_classes6/X/9Cp.smali
+index b15f69420e..71e782d4f7 100644
+--- a/src/smali_classes6/X/9Cp.smali
++++ b/src/smali_classes6/X/9Cp.smali
+@@ -1864,6 +1864,29 @@
+ .method public final A09(Lcom/instagram/model/reels/ReelItem;LX/Gsn;)V
+     .locals 17
+ 
++    sget-object v0, LX/2zD;->A00:Landroid/content/Context;
++
++    if-nez v0, :instamod_seen_pref_off
++
++    const-string v1, "instamod"
++
++    const/4 v2, 0x0
++
++    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v0
++
++    const-string v1, "no_story_seen"
++
++    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v0
++
++    if-eqz v0, :instamod_seen_pref_off
++
++    return-void
++
++    :instamod_seen_pref_off
+     move-object/from16 v4, p1
+ 
+     invoke-virtual {v4}, Lcom/instagram/model/reels/ReelItem;->A1d()Z
+diff --git a/src/smali_classes6/X/9Dn.smali b/src/smali_classes6/X/9Dn.smali
+index 43a81c53b9..5123a33bd3 100644
+--- a/src/smali_classes6/X/9Dn.smali
++++ b/src/smali_classes6/X/9Dn.smali
+@@ -37,6 +37,29 @@
+     .annotation build Ldalvik/annotation/optimization/NeverInline;
+     .end annotation
+ 
++    sget-object v0, LX/2zD;->A00:Landroid/content/Context;
++
++    if-nez v0, :instamod_seen_pref_off
++
++    const-string v1, "instamod"
++
++    const/4 v2, 0x0
++
++    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v0
++
++    const-string v1, "no_story_seen"
++
++    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v0
++
++    if-eqz v0, :instamod_seen_pref_off
++
++    return-void
++
++    :instamod_seen_pref_off
+     iget-object v0, p0, LX/9Dn;->A00:LX/9Cp;
+ 
+     iget-object v2, v0, LX/9Cp;->A0A:LX/0nC;

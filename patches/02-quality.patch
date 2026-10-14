@@ -1,0 +1,89 @@
+diff --git a/src/smali_classes14/X/Wd4.smali b/src/smali_classes14/X/Wd4.smali
+index d115d7d804..9da21b8e04 100644
+--- a/src/smali_classes14/X/Wd4.smali
++++ b/src/smali_classes14/X/Wd4.smali
+@@ -676,6 +676,14 @@
+ .end method
+ 
+ .method public final A06()Z
++    .locals 1
++
++    const/4 v0, 0x1
++
++    return v0
++.end method
++
++.method private final synthetic quality$origA06()Z
+     .locals 4
+ 
+     iget-object v2, p0, LX/Wd4;->A02:Lcom/instagram/common/session/UserSession;
+@@ -908,6 +916,14 @@
+ .end method
+ 
+ .method public final A09()Z
++    .locals 1
++
++    const/4 v0, 0x0
++
++    return v0
++.end method
++
++.method private final synthetic quality$origA09()Z
+     .locals 3
+ 
+     iget-boolean v0, p0, LX/Wd4;->A07:Z
+diff --git a/src/smali_classes7/X/Geh.smali b/src/smali_classes7/X/Geh.smali
+index e5b9afce22..9ab4c23004 100644
+--- a/src/smali_classes7/X/Geh.smali
++++ b/src/smali_classes7/X/Geh.smali
+@@ -12,7 +12,15 @@
+     return-void
+ .end method
+ 
+-.method public static final declared-synchronized A00(I)I
++.method public static final A00(I)I
++    .locals 1
++
++    const/16 v0, 0x64
++
++    return v0
++.end method
++
++.method private static synthetic quality$origA00(I)I
+     .locals 4
+ 
+     const-class v3, LX/Geh;
+@@ -215,7 +223,15 @@
+     throw v0
+ .end method
+ 
+-.method public static final declared-synchronized A03(Lcom/instagram/common/session/UserSession;Z)I
++.method public static final A03(Lcom/instagram/common/session/UserSession;Z)I
++    .locals 1
++
++    const/16 v0, 0x2000
++
++    return v0
++.end method
++
++.method private static synthetic quality$origA03(Lcom/instagram/common/session/UserSession;Z)I
+     .locals 4
+ 
+     const-class v3, LX/Geh;
+diff --git a/src/smali_classes7/X/MmN.smali b/src/smali_classes7/X/MmN.smali
+index 8827b94b0e..136c8f4705 100644
+--- a/src/smali_classes7/X/MmN.smali
++++ b/src/smali_classes7/X/MmN.smali
+@@ -7,6 +7,12 @@
+ .method public static final A00(Landroid/content/Context;IZZ)I
+     .locals 2
+ 
++    if-lez p1, :cond_keep_orig
++
++    return p1
++
++    :cond_keep_orig
++
+     if-eqz p2, :cond_3
+ 
+     const/16 v0, 0x438

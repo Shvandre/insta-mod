@@ -1,0 +1,96 @@
+diff --git a/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali b/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
+index 419d0e0e0f..f9dee1e74d 100644
+--- a/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
++++ b/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
+@@ -3323,6 +3323,50 @@
+ .method public startRequest(LX/4qo;LX/4rg;LX/4sg;)LX/9Tm;
+     .locals 12
+ 
++    iget-object v0, p1, LX/4qo;->A08:Ljava/net/URI;
++
++    if-eqz v0, :cond_adblock_pass
++
++    invoke-virtual {v0}, Ljava/net/URI;->getPath()Ljava/lang/String;
++
++    move-result-object v0
++
++    if-eqz v0, :cond_adblock_pass
++
++    const-string v1, "ads/graphql"
++
++    invoke-virtual {v0, v1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
++
++    move-result v1
++
++    if-nez v1, :cond_adblock_drop
++
++    const-string v1, "async_ads"
++
++    invoke-virtual {v0, v1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
++
++    move-result v1
++
++    if-nez v1, :cond_adblock_drop
++
++    const-string v1, "injected_reels_media"
++
++    invoke-virtual {v0, v1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
++
++    move-result v1
++
++    if-nez v1, :cond_adblock_drop
++
++    const-string v1, "profile_ads/get_profile_ads"
++
++    invoke-virtual {v0, v1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
++
++    move-result v1
++
++    if-nez v1, :cond_adblock_drop
++
++    :cond_adblock_pass
++
+     .line 0
+     const/4 v0, 0x0
+ 
+@@ -3618,6 +3662,21 @@
+ 
+     .line 143
+     return-object v0
++
++    :cond_adblock_drop
++    new-instance v1, Ljava/io/IOException;
++
++    const-string v0, "blocked ad request"
++
++    invoke-direct {v1, v0}, Ljava/io/IOException;-><init>(Ljava/lang/String;)V
++
++    iget-object v0, p0, Lcom/instagram/api/tigon/TigonServiceLayer;->performanceLogger:Lcom/instagram/api/tigon/IGTigonQuickPerformanceLogger;
++
++    invoke-direct {p0, p1, v1, p3, v0}, Lcom/instagram/api/tigon/TigonServiceLayer;->failRequest(LX/4qo;Ljava/io/IOException;LX/4sg;Lcom/instagram/api/tigon/IGTigonQuickPerformanceLogger;)LX/9Tm;
++
++    move-result-object v0
++
++    return-object v0
+ .end method
+ 
+ .method public final validateRequestBody(LX/4qo;LX/4rg;)V
+diff --git a/src/smali_classes2/X/1vT.smali b/src/smali_classes2/X/1vT.smali
+index 87dc73baf7..910422f116 100644
+--- a/src/smali_classes2/X/1vT.smali
++++ b/src/smali_classes2/X/1vT.smali
+@@ -442,6 +442,14 @@
+ .end method
+ 
+ .method public static final A02(LX/1vT;LX/08X;LX/4od;)Z
++    .locals 1
++
++    const/4 v0, 0x0
++
++    return v0
++.end method
++
++.method private static synthetic adblock$disabledA02(LX/1vT;LX/08X;LX/4od;)Z
+     .locals 11
+ 
+     iget-object v3, p0, LX/1vT;->A0D:LX/BoN;

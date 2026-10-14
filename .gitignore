@@ -1,0 +1,4 @@
+dist/
+mod.keystore
+*.apk
+.DS_Store
