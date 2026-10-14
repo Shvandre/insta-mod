@@ -75,6 +75,38 @@ index f93b15a80c..cd282f7a60 100644
  - `snapshot.max-new-file-size = 512MiB` выставлен в repo-конфиге — без этого jj отказывался трекать файлы >1MiB.
  - Оригинальные тела пропатченных методов сохранены рядом как `adblock$disabled*` / `quality$orig*` — для дебага.
 +- При правках smali помни: p0-параметры больших методов (>v15) нельзя напрямую в iget-object — используй `LX/2zD;->A00` или `move-object/from16`.
+diff --git a/modsrc/InstallResultReceiver.java b/modsrc/InstallResultReceiver.java
+new file mode 100644
+index 0000000000..590a885bfb
+--- /dev/null
++++ b/modsrc/InstallResultReceiver.java
+@@ -0,0 +1,26 @@
++package com.insta.mod;
++
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.pm.PackageInstaller;
++import android.widget.Toast;
++
++public class InstallResultReceiver extends BroadcastReceiver {
++    @Override
++    public void onReceive(Context ctx, Intent intent) {
++        int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1);
++        if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
++            Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
++            if (confirm != null) {
++                confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
++                ctx.startActivity(confirm);
++            }
++        } else if (status == PackageInstaller.STATUS_SUCCESS) {
++            Toast.makeText(ctx, "Insta Mod обновлён", Toast.LENGTH_LONG).show();
++        } else if (status != PackageInstaller.STATUS_PENDING_USER_ACTION) {
++            String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
++            Toast.makeText(ctx, "Установка не удалась: " + msg, Toast.LENGTH_LONG).show();
++        }
++    }
++}
 diff --git a/modsrc/ModSettingsActivity.java b/modsrc/ModSettingsActivity.java
 new file mode 100644
 index 0000000000..649104754f
@@ -225,7 +257,7 @@ index 0000000000..649104754f
 +}
 diff --git a/modsrc/ModUpdater.java b/modsrc/ModUpdater.java
 new file mode 100644
-index 0000000000..9d46c92b2c
+index 0000000000..08f9ed2257
 --- /dev/null
 +++ b/modsrc/ModUpdater.java
 @@ -0,0 +1,189 @@
@@ -397,9 +429,9 @@ index 0000000000..9d46c92b2c
 +        in.close();
 +        out.close();
 +
-+        Intent intent = new Intent(ctx, ModSettingsActivity.class);
-+        PendingIntent pi = PendingIntent.getActivity(ctx, sessionId, intent,
-+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
++        Intent intent = new Intent(ctx, InstallResultReceiver.class);
++        PendingIntent pi = PendingIntent.getBroadcast(ctx, sessionId, intent,
++                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
 +        IntentSender sender = pi.getIntentSender();
 +        session.commit(sender);
 +        session.close();
@@ -419,7 +451,7 @@ index 0000000000..9d46c92b2c
 +    }
 +}
 diff --git a/src/AndroidManifest.xml b/src/AndroidManifest.xml
-index 563af1a04d..f4e5e7614a 100644
+index 563af1a04d..a362cb4cd7 100644
 --- a/src/AndroidManifest.xml
 +++ b/src/AndroidManifest.xml
 @@ -12,6 +12,7 @@
@@ -430,7 +462,7 @@ index 563af1a04d..f4e5e7614a 100644
      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
      <uses-permission android:name="android.permission.WAKE_LOCK" violationExplanation="Need wake lock when user using SUP" violationType="MOS_BLOCKED_PERMISSION_WAKE_LOCK"/>
      <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS"/>
-@@ -2507,6 +2508,12 @@
+@@ -2507,6 +2508,13 @@
          </activity-alias>
          <meta-data android:name="com.android.dynamic.apk.fused.modules" android:value="base"/>
          <meta-data android:name="com.android.vending.splits" android:resource="@xml/splits0"/>
@@ -440,6 +472,7 @@ index 563af1a04d..f4e5e7614a 100644
 +                <category android:name="android.intent.category.LAUNCHER"/>
 +            </intent-filter>
 +        </activity>
++        <receiver android:exported="false" android:name="com.insta.mod.InstallResultReceiver"/>
      </application>
      <queries>
          <intent>

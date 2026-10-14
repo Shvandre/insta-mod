@@ -166,9 +166,9 @@ public class ModUpdater {
         in.close();
         out.close();
 
-        Intent intent = new Intent(ctx, ModSettingsActivity.class);
-        PendingIntent pi = PendingIntent.getActivity(ctx, sessionId, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent intent = new Intent(ctx, InstallResultReceiver.class);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, sessionId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
         IntentSender sender = pi.getIntentSender();
         session.commit(sender);
         session.close();
