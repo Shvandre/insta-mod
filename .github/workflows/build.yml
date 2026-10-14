@@ -21,8 +21,9 @@ jobs:
 
       - name: Android SDK
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "build-tools;36.1.0" "platforms;android-36.1"
+          SDKM=/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager
+          yes | $SDKM --licenses > /dev/null || true
+          $SDKM "build-tools;36.1.0" "platforms;android-36.1"
 
       - name: apktool
         run: |
