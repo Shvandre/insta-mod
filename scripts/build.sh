@@ -19,7 +19,9 @@ KEYSTORE=${INSTAMOD_KEYSTORE:-mod.keystore}
 KS_PASS=${INSTAMOD_KS_PASS:-androidmod}
 
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
+if [ -z "${KEEP_WORK:-}" ]; then
+    trap 'rm -rf "$WORK"' EXIT
+fi
 echo "== build dir: $WORK"
 
 # 1. Базовый APK
@@ -41,7 +43,7 @@ $APKTOOL d -f "$BASE_APK" -o "$WORK/src" > /dev/null
 # 3. Патчи
 for p in patches/*.patch; do
     echo "== git apply $p"
-    git apply --directory="$WORK" --exclude='README.md' --exclude='modsrc/*' "$p"
+    (cd "$WORK" && git apply --exclude='README.md' --exclude='modsrc/*' "$ROOT/$p")
 done
 
 # 4. Вордмарк (бинарные ассеты, в патчах не живут)
