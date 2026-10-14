@@ -1,0 +1,48 @@
+diff --git a/src/smali_classes2/X/1vT.smali b/src/smali_classes2/X/1vT.smali
+index 910422f116..318a3c8369 100644
+--- a/src/smali_classes2/X/1vT.smali
++++ b/src/smali_classes2/X/1vT.smali
+@@ -442,11 +442,41 @@
+ .end method
+ 
+ .method public static final A02(LX/1vT;LX/08X;LX/4od;)Z
+-    .locals 1
+-
++    .locals 3
++
++    sget-object v0, LX/2zD;->A00:Landroid/content/Context;
++
++    if-nez v0, :instamod_block_ads
++
++    const-string v1, "instamod"
++
++    const/4 v2, 0x0
++
++    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v0
++
++    const-string v1, "no_ads"
++
++    const/4 v2, 0x1
++
++    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v0
++
++    if-eqz v0, :instamod_ads_pref_off
++
++    :instamod_block_ads
+     const/4 v0, 0x0
+ 
+     return v0
++
++    :instamod_ads_pref_off
++    invoke-static {p0, p1, p2}, LX/1vT;->adblock$disabledA02(LX/1vT;LX/08X;LX/4od;)Z
++
++    move-result v0
++
++    return v0
+ .end method
+ 
+ .method private static synthetic adblock$disabledA02(LX/1vT;LX/08X;LX/4od;)Z

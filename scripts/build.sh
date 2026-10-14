@@ -40,11 +40,24 @@ APKTOOL=${APKTOOL:-apktool}
 echo "== apktool d"
 $APKTOOL d -f "$BASE_APK" -o "$WORK/src" > /dev/null
 
-# 3. Патчи
-for p in patches/*.patch; do
-    echo "== git apply $p"
-    (cd "$WORK" && git apply --exclude='README.md' --exclude='modsrc/*' "$ROOT/$p")
-done
+# 3. Патчи (порядок важен, как в jj-стеке)
+apply_patch() {
+    echo "== git apply $1"
+    (cd "$WORK" && git apply --exclude='README.md' --exclude='modsrc/*' "$ROOT/$1")
+}
+apply_patch patches/01-ads.patch
+scripts/apply-by-class.sh "$WORK" "X/1vT" patches/by-class/1vT-ads.patch
+apply_patch patches/02-quality.patch
+apply_patch patches/03-rename.patch
+# pkg — скриптом: имена X/Foo.N.smali от apktool нестабильны между ФС
+echo "== pkg-rename"
+scripts/pkg-rename.sh "$WORK/src"
+apply_patch patches/05-wordmark-force.patch
+apply_patch patches/06-modsettings.patch
+scripts/apply-by-class.sh "$WORK" "X/1vT" patches/by-class/1vT-gate.patch
+scripts/apply-by-class.sh "$WORK" "X/9Dn" patches/by-class/9Dn-seen-flush.patch
+# второй детектор скриншотов (LX/Qza;) — тоже скриптом, ищется по .class
+scripts/hook-qza.sh "$WORK/src"
 
 # 4. Вордмарк (бинарные ассеты, в патчах не живут)
 cp assets/wordmark/drawable-xhdpi.png \

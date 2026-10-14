@@ -33,12 +33,23 @@ scripts/build.sh instagram.apk        # или из локального фай�
 
 ## Как устроено
 
-- `patches/*.patch` — smali-манифест-патчи, накатываются на `apktool d`-дерево (`git apply`)
+- `patches/*.patch` — smali/манифест-патчи, накатываются на `apktool d`-дерево (`git apply`)
+- `patches/by-class/*.patch` — патчи к классам, чьи имена файлов нестабильны
+  (X/1vT, X/9Dn — коллизии регистра, apktool разводит их суффиксами `.N.smali`
+  по-разному на macOS/Linux); `scripts/apply-by-class.sh` находит файл по
+  `.class`-директиве и подставляет его в патч
+- `scripts/pkg-rename.sh` — переименование пакета `com.instagram.android` → `com.insta.mod`
+  скриптом (та же проблема нестабильных имён у 185 файлов);
+  список authorities — `scripts/pkg-rename-auths.txt`
+- `scripts/hook-qza.sh` — хук детектора скриншотов в класс `LX/Qza;` (ищется по `.class`)
 - `assets/wordmark/` — PNG вордмарка «Insta» (бинарники в патчах не живут)
 - `modsrc/` — исходник меню настроек + автообновлялки, компилируется в отдельный dex
 - `version.txt` — базовая версия Instagram, `modrev.txt` — ревизия патчей
 - `.github/workflows/build.yml` — CI: ежедневно проверяет новую версию Instagram,
   пересобирает и (при `vars.PUBLISH_APK = true`) публикует релиз
+
+Порядок применения (как в jj-стеке): 01-ads → 1vT-ads → 02-quality → 03-rename →
+pkg-rename.sh → 05-wordmark-force → 06-modsettings → 1vT-gate → 9Dn-seen-flush → hook-qza.
 
 ### Якоря для переноса патчей на новую версию Instagram
 

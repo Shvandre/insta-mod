@@ -75,22 +75,3 @@ index 419d0e0e0f..f9dee1e74d 100644
  .end method
  
  .method public final validateRequestBody(LX/4qo;LX/4rg;)V
-diff --git a/src/smali_classes2/X/1vT.smali b/src/smali_classes2/X/1vT.smali
-index 87dc73baf7..910422f116 100644
---- a/src/smali_classes2/X/1vT.smali
-+++ b/src/smali_classes2/X/1vT.smali
-@@ -442,6 +442,14 @@
- .end method
- 
- .method public static final A02(LX/1vT;LX/08X;LX/4od;)Z
-+    .locals 1
-+
-+    const/4 v0, 0x0
-+
-+    return v0
-+.end method
-+
-+.method private static synthetic adblock$disabledA02(LX/1vT;LX/08X;LX/4od;)Z
-     .locals 11
- 
-     iget-object v3, p0, LX/1vT;->A0D:LX/BoN;
