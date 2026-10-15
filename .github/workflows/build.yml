@@ -34,7 +34,7 @@ jobs:
         if: github.event_name == 'schedule'
         run: |
           LATEST=$(curl -s "https://ws75.aptoide.com/api/7/app/get?package_name=com.instagram.android" \
-            | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['nodes']['meta']['data']['vername'])")
+            | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['nodes']['meta']['data']; print(m.get('vername') or m['file']['vername'])")
           CURRENT=$(cat version.txt)
           echo "latest=$LATEST current=$CURRENT"
           if [ "$LATEST" = "$CURRENT" ]; then
