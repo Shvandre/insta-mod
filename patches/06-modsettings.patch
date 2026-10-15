@@ -75,6 +75,55 @@ index f93b15a80c..cd282f7a60 100644
  - `snapshot.max-new-file-size = 512MiB` выставлен в repo-конфиге — без этого jj отказывался трекать файлы >1MiB.
  - Оригинальные тела пропатченных методов сохранены рядом как `adblock$disabled*` / `quality$orig*` — для дебага.
 +- При правках smali помни: p0-параметры больших методов (>v15) нельзя напрямую в iget-object — используй `LX/2zD;->A00` или `move-object/from16`.
+diff --git a/modsrc/AutoUpdate.java b/modsrc/AutoUpdate.java
+new file mode 100644
+index 0000000000..831be5304a
+--- /dev/null
++++ b/modsrc/AutoUpdate.java
+@@ -0,0 +1,43 @@
++package com.insta.mod;
++
++import android.content.Context;
++import android.content.SharedPreferences;
++
++// Автопроверка обновлений: не чаще раза в 12 часов.
++// Вызывается из WordmarkHook при показе шапки ленты (≈ запуск приложения).
++public class AutoUpdate {
++    private static final long INTERVAL_MS = 12L * 60 * 60 * 1000;
++    private static boolean inFlight = false;
++
++    public static synchronized void maybeCheck(final Context ctx) {
++        final SharedPreferences prefs = ctx.getApplicationContext()
++                .getSharedPreferences("instamod", Context.MODE_PRIVATE);
++        long last = prefs.getLong("last_auto_check", 0);
++        if (inFlight || System.currentTimeMillis() - last < INTERVAL_MS) return;
++        inFlight = true;
++        ModUpdater.check(ctx, new ModUpdater.CheckCallback() {
++            @Override
++            public void onUpdate(final ModUpdater.Release rel, String localVersion) {
++                prefs.edit().putLong("last_auto_check", System.currentTimeMillis()).apply();
++                inFlight = false;
++                try {
++                    ModUpdater.showUpdateDialog(ctx, rel);
++                } catch (Exception ignored) {
++                    // активность могла умереть, пока шёл запрос
++                }
++            }
++
++            @Override
++            public void onUpToDate(String localVersion) {
++                prefs.edit().putLong("last_auto_check", System.currentTimeMillis()).apply();
++                inFlight = false;
++            }
++
++            @Override
++            public void onError(String message) {
++                // метку не ставим — повторим при следующем показе шапки
++                inFlight = false;
++            }
++        });
++    }
++}
 diff --git a/modsrc/InstallResultReceiver.java b/modsrc/InstallResultReceiver.java
 new file mode 100644
 index 0000000000..590a885bfb
@@ -553,10 +602,10 @@ index 0000000000..e60801e2a9
 +}
 diff --git a/modsrc/WordmarkHook.java b/modsrc/WordmarkHook.java
 new file mode 100644
-index 0000000000..bb3762fffc
+index 0000000000..d8f12626cd
 --- /dev/null
 +++ b/modsrc/WordmarkHook.java
-@@ -0,0 +1,23 @@
+@@ -0,0 +1,24 @@
 +package com.insta.mod;
 +
 +import android.content.Context;
@@ -568,6 +617,7 @@ index 0000000000..bb3762fffc
 +// Вызывается из smali-хуков (MergedFeedsActionBar, ActionBarTitleViewSwitcher).
 +public class WordmarkHook {
 +    public static void install(ImageView view) {
++        AutoUpdate.maybeCheck(view.getContext());
 +        view.setOnLongClickListener(new View.OnLongClickListener() {
 +            @Override
 +            public boolean onLongClick(View v) {

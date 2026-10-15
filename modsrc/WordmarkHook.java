@@ -9,6 +9,7 @@ import android.widget.ImageView;
 // Вызывается из smali-хуков (MergedFeedsActionBar, ActionBarTitleViewSwitcher).
 public class WordmarkHook {
     public static void install(ImageView view) {
+        AutoUpdate.maybeCheck(view.getContext());
         view.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
