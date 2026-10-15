@@ -54,6 +54,7 @@ echo "== pkg-rename"
 scripts/pkg-rename.sh "$WORK/src"
 apply_patch patches/05-wordmark-force.patch
 apply_patch patches/06-modsettings.patch
+apply_patch patches/07-wordmark-longclick.patch
 scripts/apply-by-class.sh "$WORK" "X/1vT" patches/by-class/1vT-gate.patch
 scripts/apply-by-class.sh "$WORK" "X/9Dn" patches/by-class/9Dn-seen-flush.patch
 # второй детектор скриншотов (LX/Qza;) — тоже скриптом, ищется по .class

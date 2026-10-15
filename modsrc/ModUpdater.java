@@ -3,11 +3,15 @@ package com.insta.mod;
 import android.app.PendingIntent;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageInstaller;
 import android.os.Handler;
 import android.os.Looper;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -113,37 +117,134 @@ public class ModUpdater {
         }).start();
     }
 
+    private static class CancelledException extends Exception {
+    }
+
     public static void downloadAndInstall(final Context ctx, final Release rel) {
         final Context app = ctx.getApplicationContext();
-        Toast.makeText(app, "Скачиваю " + rel.tag + "…", Toast.LENGTH_LONG).show();
+        final Handler ui = new Handler(Looper.getMainLooper());
+
+        int pad = (int) (20 * ctx.getResources().getDisplayMetrics().density + 0.5f);
+        LinearLayout box = new LinearLayout(ctx);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, pad, pad, 0);
+        final ProgressBar bar = new ProgressBar(ctx, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setIndeterminate(true);
+        bar.setMax(1000);
+        final TextView tv = new TextView(ctx);
+        tv.setText("Подключение…");
+        box.addView(bar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        box.addView(tv);
+
+        final boolean[] cancelled = {false};
+        final HttpURLConnection[] connRef = new HttpURLConnection[1];
+        final DialogInterface.OnClickListener cancelClick = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface d, int w) {
+                cancelled[0] = true;
+                HttpURLConnection c = connRef[0];
+                if (c != null) c.disconnect();
+            }
+        };
+        final AlertDialog dlg = new AlertDialog.Builder(ctx)
+                .setTitle("Скачивание " + rel.tag)
+                .setView(box)
+                .setNegativeButton("Отмена", cancelClick)
+                .create();
+        dlg.setCanceledOnTouchOutside(false);
+        dlg.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface d) {
+                cancelClick.onClick(d, 0);
+            }
+        });
+        dlg.show();
+
         new Thread(new Runnable() {
             @Override
             public void run() {
                 HttpURLConnection conn = null;
+                File apk = new File(app.getCacheDir(), "update.apk");
                 try {
                     conn = (HttpURLConnection) new URL(rel.apkUrl).openConnection();
+                    connRef[0] = conn;
                     conn.setRequestProperty("User-Agent", "insta-mod-updater");
                     conn.setInstanceFollowRedirects(true);
+                    conn.setConnectTimeout(15000);
                     conn.connect();
                     if (conn.getResponseCode() != 200) {
                         throw new Exception("HTTP " + conn.getResponseCode());
                     }
-                    File apk = new File(app.getCacheDir(), "update.apk");
+                    final long total = conn.getContentLength();
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            bar.setIndeterminate(total <= 0);
+                            tv.setText(total > 0 ? ("0 МБ / " + (total / 1048576) + " МБ") : "Скачивание…");
+                        }
+                    });
                     InputStream in = conn.getInputStream();
                     FileOutputStream out = new FileOutputStream(apk);
                     byte[] buf = new byte[65536];
+                    long got = 0;
+                    int lastPct = -1;
                     int n;
-                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    while ((n = in.read(buf)) > 0) {
+                        if (cancelled[0]) throw new CancelledException();
+                        out.write(buf, 0, n);
+                        got += n;
+                        if (total > 0) {
+                            final int pct = (int) (got * 100 / total);
+                            if (pct != lastPct) {
+                                lastPct = pct;
+                                final long gotF = got;
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        bar.setProgress(pct * 10);
+                                        tv.setText((gotF / 1048576) + " / " + (total / 1048576)
+                                                + " МБ (" + pct + "%)");
+                                    }
+                                });
+                            }
+                        }
+                    }
                     out.close();
                     in.close();
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() { dlg.dismiss(); }
+                    });
                     install(app, apk);
-                } catch (final Exception e) {
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                } catch (final CancelledException e) {
+                    apk.delete();
+                    ui.post(new Runnable() {
                         @Override
                         public void run() {
-                            Toast.makeText(app, "Ошибка загрузки: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            dlg.dismiss();
+                            Toast.makeText(app, "Загрузка отменена", Toast.LENGTH_SHORT).show();
                         }
                     });
+                } catch (final Exception e) {
+                    if (cancelled[0]) {
+                        apk.delete();
+                        ui.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                dlg.dismiss();
+                                Toast.makeText(app, "Загрузка отменена", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    } else {
+                        ui.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                dlg.dismiss();
+                                Toast.makeText(app, "Ошибка загрузки: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    }
                 } finally {
                     if (conn != null) conn.disconnect();
                 }
