@@ -92,7 +92,7 @@ public class ModUpdater {
                         }
                     }
                     if (rel.apkUrl == null) {
-                        throw new Exception("В релизе " + rel.tag + " нет APK");
+                        throw new Exception("Release " + rel.tag + " has no APK");
                     }
                     if (rel.tag.equals(local)) {
                         ui.post(new Runnable() {
@@ -132,7 +132,7 @@ public class ModUpdater {
         bar.setIndeterminate(true);
         bar.setMax(1000);
         final TextView tv = new TextView(ctx);
-        tv.setText("Подключение…");
+        tv.setText("Connecting…");
         box.addView(bar, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         box.addView(tv);
@@ -148,9 +148,9 @@ public class ModUpdater {
             }
         };
         final AlertDialog dlg = new AlertDialog.Builder(ctx)
-                .setTitle("Скачивание " + rel.tag)
+                .setTitle("Downloading " + rel.tag)
                 .setView(box)
-                .setNegativeButton("Отмена", cancelClick)
+                .setNegativeButton("Cancel", cancelClick)
                 .create();
         dlg.setCanceledOnTouchOutside(false);
         dlg.setOnCancelListener(new DialogInterface.OnCancelListener() {
@@ -181,7 +181,7 @@ public class ModUpdater {
                         @Override
                         public void run() {
                             bar.setIndeterminate(total <= 0);
-                            tv.setText(total > 0 ? ("0 МБ / " + (total / 1048576) + " МБ") : "Скачивание…");
+                            tv.setText(total > 0 ? ("0 MB / " + (total / 1048576) + " MB") : "Downloading…");
                         }
                     });
                     InputStream in = conn.getInputStream();
@@ -204,7 +204,7 @@ public class ModUpdater {
                                     public void run() {
                                         bar.setProgress(pct * 10);
                                         tv.setText((gotF / 1048576) + " / " + (total / 1048576)
-                                                + " МБ (" + pct + "%)");
+                                                + " MB (" + pct + "%)");
                                     }
                                 });
                             }
@@ -223,7 +223,7 @@ public class ModUpdater {
                         @Override
                         public void run() {
                             dlg.dismiss();
-                            Toast.makeText(app, "Загрузка отменена", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(app, "Download cancelled", Toast.LENGTH_SHORT).show();
                         }
                     });
                 } catch (final Exception e) {
@@ -233,7 +233,7 @@ public class ModUpdater {
                             @Override
                             public void run() {
                                 dlg.dismiss();
-                                Toast.makeText(app, "Загрузка отменена", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(app, "Download cancelled", Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else {
@@ -241,7 +241,7 @@ public class ModUpdater {
                             @Override
                             public void run() {
                                 dlg.dismiss();
-                                Toast.makeText(app, "Ошибка загрузки: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                Toast.makeText(app, "Download failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
                             }
                         });
                     }
@@ -276,15 +276,15 @@ public class ModUpdater {
     }
 
     public static void showUpdateDialog(final Context ctx, final Release rel) {
-        String msg = "Доступна версия " + rel.tag;
+        String msg = "Version " + rel.tag + " is available";
         if (rel.notes != null && rel.notes.length() > 0 && rel.notes.length() < 500) {
             msg += "\n\n" + rel.notes;
         }
         new AlertDialog.Builder(ctx)
-                .setTitle("Обновление Insta Mod")
+                .setTitle("Insta Mod update")
                 .setMessage(msg)
-                .setPositiveButton("Скачать и установить", (d, w) -> downloadAndInstall(ctx, rel))
-                .setNegativeButton("Позже", null)
+                .setPositiveButton("Download & install", (d, w) -> downloadAndInstall(ctx, rel))
+                .setNegativeButton("Later", null)
                 .show();
     }
 }

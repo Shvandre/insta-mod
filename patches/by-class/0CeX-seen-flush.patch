@@ -1,12 +1,11 @@
-diff --git a/src/smali_classes6/X/9Dn.smali b/src/smali_classes6/X/9Dn.smali
-index 43a81c53b9..5123a33bd3 100644
---- a/src/smali_classes6/X/9Dn.smali
-+++ b/src/smali_classes6/X/9Dn.smali
-@@ -37,6 +37,29 @@
+diff --git a/src/smali_classes6/X/0CeX.smali b/src/smali_classes6/X/0CeX.smali
+--- a/src/smali_classes6/X/0CeX.smali
++++ b/src/smali_classes6/X/0CeX.smali
+@@ -33,6 +33,31 @@
      .annotation build Ldalvik/annotation/optimization/NeverInline;
      .end annotation
  
-+    sget-object v0, LX/2zD;->A00:Landroid/content/Context;
++    sget-object v0, LX/04g9;->A00:Landroid/content/Context;
 +
 +    if-nez v0, :instamod_seen_pref_off
 +
@@ -20,6 +19,8 @@ index 43a81c53b9..5123a33bd3 100644
 +
 +    const-string v1, "no_story_seen"
 +
++    const/4 v2, 0
++
 +    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
 +
 +    move-result v0
@@ -29,6 +30,6 @@ index 43a81c53b9..5123a33bd3 100644
 +    return-void
 +
 +    :instamod_seen_pref_off
-     iget-object v0, p0, LX/9Dn;->A00:LX/9Cp;
+     iget-object v0, p0, LX/0CeX;->A00:LX/0CdU;
  
-     iget-object v2, v0, LX/9Cp;->A0A:LX/0nC;
+     iget-object v2, v0, LX/0CdU;->A08:LX/00qC;

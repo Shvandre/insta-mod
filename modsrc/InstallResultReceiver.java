@@ -17,10 +17,10 @@ public class InstallResultReceiver extends BroadcastReceiver {
                 ctx.startActivity(confirm);
             }
         } else if (status == PackageInstaller.STATUS_SUCCESS) {
-            Toast.makeText(ctx, "Insta Mod обновлён", Toast.LENGTH_LONG).show();
+            Toast.makeText(ctx, "Insta Mod updated", Toast.LENGTH_LONG).show();
         } else if (status != PackageInstaller.STATUS_PENDING_USER_ACTION) {
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-            Toast.makeText(ctx, "Установка не удалась: " + msg, Toast.LENGTH_LONG).show();
+            Toast.makeText(ctx, "Installation failed: " + msg, Toast.LENGTH_LONG).show();
         }
     }
 }

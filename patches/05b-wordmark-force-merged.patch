@@ -1,0 +1,14 @@
+diff --git a/src/smali_classes20/com/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar.smali b/src/smali_classes20/com/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar.smali
+--- a/src/smali_classes20/com/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar.smali
++++ b/src/smali_classes20/com/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar.smali
+@@ -284,6 +284,10 @@
+ 
+     iput-object v0, p0, Lcom/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar;->A0q:Lcom/instagram/common/ui/base/IgSimpleImageView;
+ 
++    const v1, 0x7f082b34
++
++    invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setImageResource(I)V
++
+     const/16 v1, 0x2e
+ 
+     new-instance v0, LX/0H27;

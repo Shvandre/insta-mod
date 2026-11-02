@@ -1,5 +1,4 @@
 diff --git a/src/res/values/strings.xml b/src/res/values/strings.xml
-index baf9f6ad27..da00ce333b 100644
 --- a/src/res/values/strings.xml
 +++ b/src/res/values/strings.xml
 @@ -9,7 +9,7 @@
@@ -11,12 +10,12 @@ index baf9f6ad27..da00ce333b 100644
      <string name="APKTOOL_RENAMED_0x7f13000a">Optimizing clip… %1$d%%</string>
      <string name="APKTOOL_RENAMED_0x7f13000b">Optimizing clip %1$d of %2$d… %3$d%%</string>
      <string name="APKTOOL_RENAMED_0x7f13000c">Optimizing clips… %1$d%%</string>
-@@ -184,7 +184,7 @@
-     <string name="APKTOOL_RENAMED_0x7f1300b6">%1$s to %2$s</string>
-     <string name="APKTOOL_RENAMED_0x7f1300b7">Undo</string>
-     <string name="APKTOOL_RENAMED_0x7f1300b8">Incorrect CVV</string>
--    <string name="APKTOOL_RENAMED_0x7f1300b9">Instagram</string>
-+    <string name="APKTOOL_RENAMED_0x7f1300b9">Insta</string>
-     <string name="APKTOOL_RENAMED_0x7f1300ba">[{ \"include\": \"https://www.instagram.com/.well-known/assetlinks.json\" },{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://m.instagram.com\" } },{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://www.instagram.com\" } }]</string>
-     <string name="APKTOOL_RENAMED_0x7f1300bb">Enter valid CVV</string>
-     <string name="APKTOOL_RENAMED_0x7f1300bc">Enter valid expiration</string>
+@@ -214,7 +214,7 @@ Are you sure you want to follow this link?"</string>
+     <string name="APKTOOL_RENAMED_0x7f1300d2">%1$s to %2$s</string>
+     <string name="APKTOOL_RENAMED_0x7f1300d3">Undo</string>
+     <string name="APKTOOL_RENAMED_0x7f1300d4">Incorrect CVV</string>
+-    <string name="APKTOOL_RENAMED_0x7f1300d5">Instagram</string>
++    <string name="APKTOOL_RENAMED_0x7f1300d5">Insta</string>
+     <string name="APKTOOL_RENAMED_0x7f1300d6">[{ \"include\": \"https://www.instagram.com/.well-known/assetlinks.json\" },{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://m.instagram.com\" } },{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://www.instagram.com\" } }]</string>
+     <string name="APKTOOL_RENAMED_0x7f1300d7">Enter a valid CVV</string>
+     <string name="APKTOOL_RENAMED_0x7f1300d8">Enter a valid expiration</string>

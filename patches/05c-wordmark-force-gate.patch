@@ -1,0 +1,12 @@
+diff --git a/src/smali_classes2/X/06dT.smali b/src/smali_classes2/X/06dT.smali
+--- a/src/smali_classes2/X/06dT.smali
++++ b/src/smali_classes2/X/06dT.smali
+@@ -767,8 +767,6 @@
+ 
+     if-eqz v1, :cond_b
+ 
+-    if-eqz v10, :cond_b
+-
+     sget-object v0, LX/00RM;->A00:LX/00RM;
+ 
+     invoke-virtual {v0, v4}, LX/00RM;->A06(Lcom/instagram/common/session/UserSession;)Z

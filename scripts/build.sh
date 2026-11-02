@@ -31,7 +31,15 @@ else
     BASE_APK="$WORK/instagram-base.apk"
     echo "== скачиваю Instagram $IG_VERSION (aptoide, arm64)"
     URL=$(curl -s "https://ws75.aptoide.com/api/7/app/get?package_name=com.instagram.android" \
-        | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['nodes']['meta']['data']['file']['path'])")
+        | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['nodes']['meta']['data']; print(m['file']['path'])")
+    VER=$(curl -s "https://ws75.aptoide.com/api/7/app/get?package_name=com.instagram.android" \
+        | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['nodes']['meta']['data']; print(m.get('vername') or m['file']['vername'])")
+    if [ "$VER" != "$IG_VERSION" ]; then
+        echo "!! Aptoide отдаёт $VER, а version.txt = $IG_VERSION." >&2
+        echo "!! Скачаю вручную нужную версию и запусти: scripts/build.sh instagram.apk" >&2
+        echo "!! (Uptodown: https://instagram.en.uptodown.com/android/versions)" >&2
+        exit 1
+    fi
     curl -sL "$URL" -o "$BASE_APK"
 fi
 
@@ -40,33 +48,42 @@ APKTOOL=${APKTOOL:-apktool}
 echo "== apktool d"
 $APKTOOL d -f "$BASE_APK" -o "$WORK/src" > /dev/null
 
-# 3. Патчи (порядок важен, как в jj-стеке)
+# 3. Патчи (порядок важен)
 apply_patch() {
     echo "== git apply $1"
     (cd "$WORK" && git apply --exclude='README.md' --exclude='modsrc/*' "$ROOT/$1")
 }
 apply_patch patches/01-ads.patch
-scripts/apply-by-class.sh "$WORK" "X/1vT" patches/by-class/1vT-ads.patch
-apply_patch patches/02-quality.patch
+scripts/apply-by-class.sh "$WORK" "X/05nH" patches/by-class/05nH-ads-gate.patch
+apply_patch patches/02-quality-0F6S.patch
+scripts/apply-by-class.sh "$WORK" "X/0ZkC" patches/by-class/0ZkC-quality.patch
+scripts/apply-by-class.sh "$WORK" "X/0Xqx" patches/by-class/0Xqx-bitrate.patch
 apply_patch patches/03-rename.patch
+# манифест-патч — ДО pkg-rename: контекст ханка захватывает package= в <manifest>
+apply_patch patches/06a-modsettings-manifest.patch
 # pkg — скриптом: имена X/Foo.N.smali от apktool нестабильны между ФС
 echo "== pkg-rename"
 scripts/pkg-rename.sh "$WORK/src"
-apply_patch patches/05-wordmark-force.patch
-apply_patch patches/06-modsettings.patch
-apply_patch patches/07-wordmark-longclick.patch
-scripts/apply-by-class.sh "$WORK" "X/1vT" patches/by-class/1vT-gate.patch
-scripts/apply-by-class.sh "$WORK" "X/9Dn" patches/by-class/9Dn-seen-flush.patch
-# второй детектор скриншотов (LX/Qza;) — тоже скриптом, ищется по .class
-scripts/hook-qza.sh "$WORK/src"
+apply_patch patches/05a-wordmark-force-switcher.patch
+apply_patch patches/05b-wordmark-force-merged.patch
+apply_patch patches/05c-wordmark-force-gate.patch
+apply_patch patches/06b-modsettings-reelmodel.patch
+apply_patch patches/06c-modsettings-seenstate.patch
+apply_patch patches/07a-wordmark-longclick-switcher.patch
+apply_patch patches/07b-wordmark-longclick-merged.patch
+scripts/apply-by-class.sh "$WORK" "X/0CeX" patches/by-class/0CeX-seen-flush.patch
+# детекторы скриншотов (обе реализации, ищутся по методу Abh) — тоже скриптом
+scripts/hook-screenshot.sh "$WORK/src"
 
-# 4. Вордмарк (бинарные ассеты, в патчах не живут)
-cp assets/wordmark/drawable-xhdpi.png \
-   "$WORK/src/res/drawable-xhdpi/instagram_wordmark_ig_wordmark_r3_finalize_v1.png"
-cp assets/wordmark/drawable-night-xhdpi.png \
-   "$WORK/src/res/drawable-night-xhdpi/instagram_wordmark_ig_wordmark_r3_finalize_v1.png"
-rm -f "$WORK/src/res/drawable-xhdpi/instagram_wordmark_ig_wordmark_r3_finalize_v1.webp" \
-      "$WORK/src/res/drawable-night-xhdpi/instagram_wordmark_ig_wordmark_r3_finalize_v1.webp"
+# 4. Вордмарк (бинарные ассеты, в патчах не живут); 455+ несёт 3 плотности
+for d in xhdpi xxhdpi mdpi; do
+    cp "assets/wordmark/drawable-${d}.png" \
+       "$WORK/src/res/drawable-${d}/instagram_wordmark_ig_wordmark_r3_finalize_v1.png"
+    cp "assets/wordmark/drawable-night-${d}.png" \
+       "$WORK/src/res/drawable-night-${d}/instagram_wordmark_ig_wordmark_r3_finalize_v1.png"
+    rm -f "$WORK/src/res/drawable-${d}/instagram_wordmark_ig_wordmark_r3_finalize_v1.webp" \
+          "$WORK/src/res/drawable-night-${d}/instagram_wordmark_ig_wordmark_r3_finalize_v1.webp"
+done
 
 # 5. Версия мода (читает автообновлялка)
 mkdir -p "$WORK/src/assets/instamod"

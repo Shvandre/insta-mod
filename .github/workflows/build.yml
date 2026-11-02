@@ -37,7 +37,12 @@ jobs:
             | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['nodes']['meta']['data']; print(m.get('vername') or m['file']['vername'])")
           CURRENT=$(cat version.txt)
           echo "latest=$LATEST current=$CURRENT"
+          NEWEST=$(printf '%s\n' "$LATEST" "$CURRENT" | sort -V | tail -1)
           if [ "$LATEST" = "$CURRENT" ]; then
+            echo "skip=1" >> "$GITHUB_ENV"
+          elif [ "$NEWEST" = "$CURRENT" ]; then
+            # Aptoide отстаёт от version.txt (база взята с другого зеркала) — не даунгрейдим,
+            # но и собирать нечего: ждём, пока Aptoide догонит
             echo "skip=1" >> "$GITHUB_ENV"
           else
             echo "$LATEST" > version.txt

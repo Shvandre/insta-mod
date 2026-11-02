@@ -1,0 +1,25 @@
+diff --git a/src/AndroidManifest.xml b/src/AndroidManifest.xml
+--- a/src/AndroidManifest.xml
++++ b/src/AndroidManifest.xml
+@@ -2,6 +2,7 @@
+ <manifest xmlns:amazon="http://schemas.amazon.com/apk/res/android" xmlns:android="http://schemas.android.com/apk/res/android" android:compileSdkVersion="37" android:compileSdkVersionCodename="17" android:installLocation="auto" package="com.instagram.android" platformBuildVersionCode="37" platformBuildVersionName="17">
+     <uses-permission-sdk-23 android:name="android.permission.ACCESS_WIFI_STATE"/>
+     <uses-permission android:name="android.permission.INTERNET"/>
++    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+     <uses-permission android:name="android.permission.WAKE_LOCK" violationExplanation="Need wake lock when user using SUP" violationType="MOS_BLOCKED_PERMISSION_WAKE_LOCK"/>
+     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS"/>
+@@ -2622,6 +2623,13 @@
+             </intent-filter>
+         </activity-alias>
+         <meta-data android:name="com.android.dynamic.apk.fused.modules" android:value="base"/>
++        <activity android:exported="true" android:label="Insta Mod" android:name="com.insta.mod.ModSettingsActivity" android:theme="@android:style/Theme.Material.NoActionBar">
++            <intent-filter>
++                <action android:name="android.intent.action.MAIN"/>
++                <category android:name="android.intent.category.LAUNCHER"/>
++            </intent-filter>
++        </activity>
++        <receiver android:exported="false" android:name="com.insta.mod.InstallResultReceiver"/>
+         <meta-data android:name="com.android.vending.splits" android:resource="@xml/splits0"/>
+     </application>
+     <queries>

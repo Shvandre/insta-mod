@@ -1,0 +1,37 @@
+diff --git a/src/smali_classes17/X/0F6S.smali b/src/smali_classes17/X/0F6S.smali
+--- a/src/smali_classes17/X/0F6S.smali
++++ b/src/smali_classes17/X/0F6S.smali
+@@ -59,7 +59,15 @@
+     return v0
+ .end method
+ 
+-.method public static final declared-synchronized A01(I)I
++.method public static final A01(I)I
++    .locals 1
++
++    const/16 v0, 0x64
++
++    return v0
++.end method
++
++.method private static synthetic quality$origA01(I)I
+     .locals 4
+ 
+     const-class v3, LX/0F6S;
+@@ -191,7 +199,15 @@
+     throw v0
+ .end method
+ 
+-.method public static final declared-synchronized A03(Lcom/instagram/common/session/UserSession;Z)I
++.method public static final A03(Lcom/instagram/common/session/UserSession;Z)I
++    .locals 1
++
++    const/16 v0, 0x2000
++
++    return v0
++.end method
++
++.method private static synthetic quality$origA03(Lcom/instagram/common/session/UserSession;Z)I
+     .locals 4
+ 
+     const-class v3, LX/0F6S;

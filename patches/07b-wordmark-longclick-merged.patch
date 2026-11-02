@@ -1,0 +1,12 @@
+diff --git a/src/smali_classes20/com/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar.smali b/src/smali_classes20/com/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar.smali
+--- a/src/smali_classes20/com/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar.smali
++++ b/src/smali_classes20/com/instagram/homecoming/feeds/mergedfeed/actionbar/MergedFeedsActionBar.smali
+@@ -288,6 +288,8 @@
+ 
+     invoke-virtual {v0, v1}, Landroid/widget/ImageView;->setImageResource(I)V
+ 
++    invoke-static {v0}, Lcom/insta/mod/WordmarkHook;->install(Landroid/widget/ImageView;)V
++
+     const/16 v1, 0x2e
+ 
+     new-instance v0, LX/0H27;

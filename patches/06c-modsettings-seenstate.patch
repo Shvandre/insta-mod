@@ -1,0 +1,35 @@
+diff --git a/src/smali_classes6/X/0CdU.smali b/src/smali_classes6/X/0CdU.smali
+--- a/src/smali_classes6/X/0CdU.smali
++++ b/src/smali_classes6/X/0CdU.smali
+@@ -1314,6 +1314,31 @@
+ .method public final A08(Lcom/instagram/model/reels/ReelItem;LX/02Na;)V
+     .locals 6
+ 
++    sget-object v0, LX/04g9;->A00:Landroid/content/Context;
++
++    if-nez v0, :instamod_seen_pref_off
++
++    const-string v1, "instamod"
++
++    const/4 v2, 0x0
++
++    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
++
++    move-result-object v0
++
++    const-string v1, "no_story_seen"
++
++    const/4 v2, 0
++
++    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
++
++    move-result v0
++
++    if-eqz v0, :instamod_seen_pref_off
++
++    return-void
++
++    :instamod_seen_pref_off
+     invoke-virtual {p1}, Lcom/instagram/model/reels/ReelItem;->A1Z()Z
+ 
+     move-result v0

@@ -1,0 +1,12 @@
+diff --git a/src/smali_classes2/com/instagram/actionbar/ActionBarTitleViewSwitcher.smali b/src/smali_classes2/com/instagram/actionbar/ActionBarTitleViewSwitcher.smali
+--- a/src/smali_classes2/com/instagram/actionbar/ActionBarTitleViewSwitcher.smali
++++ b/src/smali_classes2/com/instagram/actionbar/ActionBarTitleViewSwitcher.smali
+@@ -238,6 +238,8 @@
+ 
+     invoke-virtual {v0, v2}, Landroid/widget/ImageView;->setImageResource(I)V
+ 
++    invoke-static {v0}, Lcom/insta/mod/WordmarkHook;->install(Landroid/widget/ImageView;)V
++
+     .line 537623849
+     const v0, 0x7f0b24ed
+ 
