@@ -24,23 +24,32 @@ if [ -z "${KEEP_WORK:-}" ]; then
 fi
 echo "== build dir: $WORK"
 
-# 1. Базовый APK
+# 1. Базовый APK: локальный файл → Aptoide → релиз base-<версия> в нашем репо
+#    (Aptoide часто отстаёт; тогда базу берм из кэша: релиз с тегом base-<версия>
+#    и активом instagram-<версия-с-дефисами>.apk, туда его кладут вручную)
 if [ $# -ge 1 ]; then
     BASE_APK=$1
 else
     BASE_APK="$WORK/instagram-base.apk"
-    echo "== скачиваю Instagram $IG_VERSION (aptoide, arm64)"
-    URL=$(curl -s "https://ws75.aptoide.com/api/7/app/get?package_name=com.instagram.android" \
-        | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['nodes']['meta']['data']; print(m['file']['path'])")
     VER=$(curl -s "https://ws75.aptoide.com/api/7/app/get?package_name=com.instagram.android" \
         | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['nodes']['meta']['data']; print(m.get('vername') or m['file']['vername'])")
-    if [ "$VER" != "$IG_VERSION" ]; then
-        echo "!! Aptoide отдаёт $VER, а version.txt = $IG_VERSION." >&2
-        echo "!! Скачаю вручную нужную версию и запусти: scripts/build.sh instagram.apk" >&2
-        echo "!! (Uptodown: https://instagram.en.uptodown.com/android/versions)" >&2
-        exit 1
+    if [ "$VER" = "$IG_VERSION" ]; then
+        echo "== скачиваю Instagram $IG_VERSION (aptoide, arm64)"
+        URL=$(curl -s "https://ws75.aptoide.com/api/7/app/get?package_name=com.instagram.android" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['nodes']['meta']['data']; print(m['file']['path'])")
+        curl -sL "$URL" -o "$BASE_APK"
+    else
+        REPO=${INSTAMOD_REPO:-Shvandre/insta-mod}
+        BASE_URL="https://github.com/${REPO}/releases/download/base-${IG_VERSION}/instagram-$(echo "$IG_VERSION" | tr . -).apk"
+        echo "== Aptoide отдаёт $VER — беру базу из кэша: $BASE_URL"
+        if ! curl -fsSL "$BASE_URL" -o "$BASE_APK"; then
+            echo "!! База $IG_VERSION недоступна ни в Aptoide ($VER), ни в релизе base-$IG_VERSION." >&2
+            echo "!! Скачай APK (Uptodown: https://instagram.en.uptodown.com/android/versions)," >&2
+            echo "!! положи в релиз base-$IG_VERSION как instagram-$(echo "$IG_VERSION" | tr . -).apk" >&2
+            echo "!! или собери локально: scripts/build.sh instagram.apk" >&2
+            exit 1
+        fi
     fi
-    curl -sL "$URL" -o "$BASE_APK"
 fi
 
 # 2. Декомпиляция

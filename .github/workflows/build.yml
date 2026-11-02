@@ -1,6 +1,8 @@
 name: build
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '23 4 * * *'  # ежедневная проверка новой версии Instagram
@@ -30,27 +32,36 @@ jobs:
           curl -sL https://github.com/iBotPeaches/Apktool/releases/download/v3.0.3/apktool_3.0.3.jar -o apktool.jar
           echo "APKTOOL=java -jar $PWD/apktool.jar" >> "$GITHUB_ENV"
 
-      - name: Проверка новой версии Instagram (только по расписанию)
-        if: github.event_name == 'schedule'
+      - name: Выбор источника базового APK
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           LATEST=$(curl -s "https://ws75.aptoide.com/api/7/app/get?package_name=com.instagram.android" \
             | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['nodes']['meta']['data']; print(m.get('vername') or m['file']['vername'])")
           CURRENT=$(cat version.txt)
-          echo "latest=$LATEST current=$CURRENT"
-          NEWEST=$(printf '%s\n' "$LATEST" "$CURRENT" | sort -V | tail -1)
-          if [ "$LATEST" = "$CURRENT" ]; then
-            echo "skip=1" >> "$GITHUB_ENV"
-          elif [ "$NEWEST" = "$CURRENT" ]; then
-            # Aptoide отстаёт от version.txt (база взята с другого зеркала) — не даунгрейдим,
-            # но и собирать нечего: ждём, пока Aptoide догонит
-            echo "skip=1" >> "$GITHUB_ENV"
-          else
+          MODREV=$(cat modrev.txt)
+          TAG="${CURRENT}-mod.${MODREV}"
+          echo "latest=$LATEST current=$CURRENT tag=$TAG"
+
+          # по расписанию нечего собирать, если релиз этой версии уже есть
+          if [ "$(printf '%s\n' "$LATEST" "$CURRENT" | sort -V | tail -1)" = "$LATEST" ] && [ "$LATEST" != "$CURRENT" ]; then
+            # Aptoide новее — бампаем версию и собираем с него
             echo "$LATEST" > version.txt
             git config user.name "github-actions"
             git config user.email "github-actions@github.com"
             git add version.txt
             git commit -m "base: bump Instagram to $LATEST"
             git push
+          elif [ "${{ github.event_name }}" = "schedule" ] && gh release view "$TAG" > /dev/null 2>&1; then
+            echo "schedule: релиз $TAG уже существует — скип"
+            echo "skip=1" >> "$GITHUB_ENV"
+          elif [ "$LATEST" = "$CURRENT" ]; then
+            echo "источник: aptoide"
+          elif gh release view "base-$CURRENT" > /dev/null 2>&1; then
+            echo "источник: кэш base-$CURRENT (Aptoide отстаёт: $LATEST)"
+          else
+            echo "skip=1" >> "$GITHUB_ENV"
+            echo "::notice::База $CURRENT недоступна: Aptoide=$LATEST, релиза base-$CURRENT нет. Положи чистый APK в релиз base-$CURRENT (см. README)."
           fi
 
       - name: Сборка
