@@ -1,6 +1,6 @@
 diff --git a/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali b/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
---- a/.t1
-+++ b/.t2
+--- a/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
++++ b/src/smali/com/instagram/api/tigon/TigonServiceLayer.smali
 @@ -4877,6 +4877,112 @@
  .method public startRequest(LX/02dI;LX/02dJ;LX/02dR;)LX/0CDM;
      .locals 7
